@@ -103,6 +103,7 @@ def diagnostico_automatico(archivo, titulo=""):
  fuente_ref=bool(re.search(r"(?is)(referencias|bibliograf[ií]a)\b[\s\S]{0,3500}UNICEF",texto))
  conectores=sum(1 for frase in ["sin embargo","por lo tanto","además","en consecuencia","por otra parte","no obstante","en conclusión","por ejemplo"] if frase in texto.lower())
  citas=bool(re.search(r"\([A-ZÁÉÍÓÚÑ][^()]{1,60},?\s*(?:19|20)\d{2}\)|\[(?:1|2|3|4|5)\]",texto))
+ promedio=round(n/max(len(oraciones),1),1)
  # Guía de estilo académico: patrones detectables, no juicio gramatical exhaustivo.
  grupos_conectores={
   "Adición":["además","asimismo","de igual manera","también","por otra parte"],
@@ -133,7 +134,6 @@ def diagnostico_automatico(archivo, titulo=""):
   "conjunciones":conjug,"preposiciones":prepos,"recomendaciones":recomendacion_estilo,
   "modelo":"Afirmación → evidencia verificable → interpretación → conexión con la tesis.",
   "advertencia":"Contar conectores, conjunciones y preposiciones no permite determinar por sí solo la corrección del estilo; son recursos funcionales, no una lista que deba insertarse mecánicamente."}
- promedio=round(n/max(len(oraciones),1),1)
  repetidos=sum(x-1 for x in Counter(tuple(palabras[i:i+5]) for i in range(max(0,n-4))).values() if x>1)
  puntos=[]
  if n>=500:puntos.append(("Extensión","El documento aporta material suficiente para revisar su desarrollo."))
