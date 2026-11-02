@@ -1,23 +1,33 @@
-# Suficiencia Escrita — Rejillas V2 y V3
+# Suficiencia Escrita · Aplicación web V2/V3
 
-Plataforma de valoración docente de trabajos escritos académicos con portal del estudiante, informes y exportación CSV para Power BI.
+Portal móvil para trabajos escritos de suficiencia académica, con carga de archivos PDF/DOCX/TXT, evaluación manual por criterios, informe privado mediante código y CSV para Power BI.
 
-## Estado y alcance
-Este repositorio contiene un prototipo educativo. **No es un sistema institucional seguro todavía**. Antes de cargar información real de estudiantes: implementar autenticación individual, consentimiento informado, controles de acceso, registro de auditoría, copias de seguridad y política de protección de datos de Colombia. No subir archivos de estudiantes a GitHub.
+## Estado actual
+Código fuente publicado en GitHub. **Aún no hay una dirección HTTPS del aplicativo funcionando**: es necesario crear el servicio de alojamiento en Render y probarlo. Esta es una versión piloto y no está autorizada para almacenar datos reales de menores sin evaluación institucional de seguridad y privacidad.
 
-## Inicio local
-```bash
-pip install -r requirements.txt
-export ADMIN_PASSWORD="cambia-esta-clave-por-una-muy-segura"
-python server.py
-```
-Abrir http://localhost:8080
+## Ejecución local
+1. Instala Python 3.11 o superior.
+2. `pip install -r requirements.txt`
+3. Establece las variables `DOCENTE_PASSWORD` y `SECRET_KEY` (valores fuertes, privados).
+4. Ejecuta `python app.py`. Abre `http://localhost:8080`.
 
-## Publicación
-El archivo `render.yaml` propone una Web Service de Render. Un despliegue de prueba sin disco persistente perderá resultados tras reinicios. No utilizar con alumnos reales sin almacenamiento persistente y mejoras de seguridad.
+## Publicación en Render
+1. Inicia sesión en https://dashboard.render.com/ .
+2. **New → Blueprint** y selecciona el repositorio `Lice-Stiven96/suficiencia-escrita`.
+3. Render detectará `render.yaml`. Revisa plan y costos antes de confirmar: la plantilla solicita un disco persistente y el plan Starter.
+4. Configura `DOCENTE_PASSWORD` y confirma el despliegue. `SECRET_KEY` se genera de manera automática.
+5. Comprueba la ruta `/health`, la carga de la portada y los flujos con registros ficticios antes de publicar la dirección a estudiantes.
 
-## Evaluación
-Se consideran las competencias lingüística y textual-discursiva de la Rejilla V2 y ampliaciones V3. Escala personalizada A 1.0–2.9; B 3.0–3.9; C 4.0–4.5; D 4.6–5.0. La calificación publicada siempre requiere valoración docente. No determina automáticamente plagio o uso de inteligencia artificial.
+## Límites y mejoras imprescindibles
+- No hay cuentas individuales ni aislamiento por curso; el código de resultado es un secreto tipo enlace y debe guardarse.
+- Cualquier persona con acceso al formulario puede enviar archivos; falta protección contra spam y controles adicionales de archivos.
+- Faltan CSRF, auditoría, copia de seguridad, retención y eliminación segura, cifrado/gestión de datos y política de tratamiento.
+- La interfaz incluye versiones resumidas de los criterios; **no equivale a un dictamen automatizado de plagio o uso de IA**, ni sustituye la aplicación integral de la rejilla original.
+- El repositorio actualmente es público: nunca incluir información, documentos o credenciales de estudiantes.
+- El botón compartir usa el diálogo nativo cuando está disponible; para WhatsApp se puede compartir manualmente. No hay número docente configurado.
 
-## Reconocimiento
-La Rejilla V2 original atribuye su diseño a Clara Lucía Pradilla Torres, Erica Ramírez Morales, María Yasmín Soto Alvarado y Elsa María Ortiz Casallas (2017). Esta implementación es una adaptación tecnológica, sin atribuir titularidad de la obra original.
+## Niveles
+A = 1.0–2.9, B = 3.0–3.9, C = 4.0–4.5, D = 4.6–5.0. La nota es definitiva **solo cuando la registra el docente**.
+
+## Créditos
+La Rejilla V2 de 2017 atribuye su elaboración a Clara Lucía Pradilla Torres, Erica Ramírez Morales, María Yasmín Soto Alvarado y Elsa María Ortiz Casallas. El proyecto incorpora una adaptación tecnológica, sin atribuir titularidad sobre el documento original.
