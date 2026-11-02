@@ -1,3 +1,6 @@
+## DEMOSTRACIÓN GRATUITA
+El archivo `render.yaml` ahora usa el plan `free` y establece `DEMO_MODE=true`. Se exige confirmar datos ficticios para simular la entrega. **No usar con información de estudiantes reales**: Render Free elimina archivos y SQLite al reiniciarse y no tiene disco persistente. Esta versión no es para producción. Después de crear el Web Service en Render habrá una URL HTTPS que deberá probarse, no puede predecirse de antemano.
+
 # Suficiencia Escrita · Aplicación web V2/V3
 
 Portal móvil para trabajos escritos de suficiencia académica, con carga de archivos PDF/DOCX/TXT, evaluación manual por criterios, informe privado mediante código y CSV para Power BI.
@@ -14,7 +17,7 @@ Código fuente publicado en GitHub. **Aún no hay una dirección HTTPS del aplic
 ## Publicación en Render
 1. Inicia sesión en https://dashboard.render.com/ .
 2. **New → Blueprint** y selecciona el repositorio `Lice-Stiven96/suficiencia-escrita`.
-3. Render detectará `render.yaml`. Revisa plan y costos antes de confirmar: la plantilla solicita un disco persistente y el plan Starter.
+3. Render detectará `render.yaml`. Selecciona el plan Free y revisa que el costo mensual del servicio sea $0. No hay disco persistente.
 4. Configura `DOCENTE_PASSWORD` y confirma el despliegue. `SECRET_KEY` se genera de manera automática.
 5. Comprueba la ruta `/health`, la carga de la portada y los flujos con registros ficticios antes de publicar la dirección a estudiantes.
 
