@@ -33,6 +33,52 @@ def view(title,content,**kwargs):return render_template_string(PAGE,title=title,
 @app.get("/")
 def home():
  return view("Inicio",'''<section class="hero"><p>PLATAFORMA DE PRODUCCIÓN ESCRITA ACADÉMICA Y CIENTÍFICA · DEMOSTRACIÓN GRATUITA</p><h1>Evaluar con criterios. Mejorar con evidencia.</h1><p>Presentación de trabajos escritos de suficiencia, retroalimentación formativa y seguimiento académico con las rejillas Versión 2 y Versión 3.</p><a class="btn" href="/entregar">Entregar trabajo</a> <a class="btn blue" href="/consulta">Consultar resultado</a></section><div class="grid"><div class="box"><h2>Estudiantes</h2><p>Sube tu trabajo y recibe un código privado para consultar su valoración.</p></div><div class="box"><h2>Docentes</h2><p>Evalúa competencias lingüísticas, texto-discursivas y académicas con observaciones detalladas.</p></div><div class="box"><h2>Indicadores</h2><p>Promedios, distribución A–D y exportación CSV para Power BI.</p></div></div><div class="box"><h2>Escala de desempeño</h2><p><b>A:</b> 1.0–2.9 · <b>B:</b> 3.0–3.9 · <b>C:</b> 4.0–4.5 · <b>D:</b> 4.6–5.0</p><p class="small">Esta es la escala personalizada de la plataforma, no una equivalencia automática con escalas oficiales de otras instituciones.</p></div>''')
+
+def diagnostico_automatico(archivo):
+ """Análisis inmediato de indicadores textuales; no equivale a una calificación docente."""
+ import re
+ from collections import Counter
+ extension=archivo.suffix.lower()
+ try:
+  if extension==".txt":
+   texto=archivo.read_text(encoding="utf-8-sig",errors="replace")
+  elif extension==".docx":
+   from docx import Document
+   texto="\n".join(p.text for p in Document(str(archivo)).paragraphs)
+  elif extension==".pdf":
+   from pypdf import PdfReader
+   lector=PdfReader(str(archivo))
+   if len(lector.pages)>60:return {"error":"Para un análisis preliminar, el documento no debe superar 60 páginas."}
+   texto="\n".join(p.extract_text() or "" for p in lector.pages)
+  else:return {"error":"Formato no admitido"}
+ except Exception:
+  return {"error":"No fue posible extraer el texto. Revisa que el archivo no esté protegido ni sea un PDF escaneado."}
+ palabras=re.findall(r"\b[^\W\d_]+(?:[-'][^\W\d_]+)*\b",texto.lower(),flags=re.UNICODE)
+ n=len(palabras)
+ if n<80:return {"error":"No se identificó suficiente texto editable para generar un diagnóstico. Se necesitan al menos 80 palabras; en PDF escaneado no hay extracción automática."}
+ parrafos=[p.strip() for p in re.split(r"\n\s*\n|\r\n\s*\r\n",texto) if len(p.strip())>=35]
+ oraciones=[o.strip() for o in re.split(r"[.!?]+(?:\s|$)",texto) if len(o.strip())>=15]
+ referencias=bool(re.search(r"\b(referencias|bibliograf[ií]a|fuentes consultadas)\b",texto,re.I))
+ conectores=sum(1 for frase in ["sin embargo","por lo tanto","además","en consecuencia","por otra parte","no obstante","en conclusión","por ejemplo"] if frase in texto.lower())
+ citas=bool(re.search(r"\([A-ZÁÉÍÓÚÑ][^()]{1,60},?\s*(?:19|20)\d{2}\)|\[(?:1|2|3|4|5)\]",texto))
+ promedio=round(n/max(len(oraciones),1),1)
+ repetidos=sum(x-1 for x in Counter(tuple(palabras[i:i+5]) for i in range(max(0,n-4))).values() if x>1)
+ puntos=[]
+ if n>=500:puntos.append(("Extensión","El documento aporta material suficiente para revisar su desarrollo."))
+ else:puntos.append(("Extensión","Ampliar el desarrollo del tema con argumentos y ejemplos."))
+ if len(parrafos)>=4:puntos.append(("Organización","Se identifican varios bloques de texto; revisar la unidad temática de cada párrafo."))
+ else:puntos.append(("Organización","Separar las ideas en párrafos con función clara."))
+ if conectores>=2:puntos.append(("Cohesión","Se identifican conectores discursivos; comprobar que expresen relaciones lógicas."))
+ else:puntos.append(("Cohesión","Fortalecer las relaciones entre argumentos mediante conectores pertinentes."))
+ if citas and referencias:puntos.append(("Fuentes","Se observan señales de citas y referencias; verificar correspondencia y autenticidad."))
+ else:puntos.append(("Fuentes","Revisar la presencia de citas y lista de referencias conforme a APA 7."))
+ if promedio>35:puntos.append(("Sintaxis","La longitud media de algunas oraciones aconseja revisar claridad y puntuación."))
+ else:puntos.append(("Sintaxis","Revisar concordancia y precisión; la longitud de las oraciones por sí sola no prueba calidad."))
+ if repetidos>10:puntos.append(("Repetición","Se detectaron secuencias repetidas que conviene revisar en contexto."))
+ # Índice orientativo calculado con variables observables; NO es nota A–D ni juicio académico.
+ indice=round(100*(min(n/500,1)*0.25+min(len(parrafos)/4,1)*0.2+min(conectores/2,1)*0.2+(.20 if citas else 0)+(.15 if referencias else 0)))
+ return {"palabras":n,"parrafos":len(parrafos),"oraciones":len(oraciones),"indice":indice,"observaciones":puntos,"limitaciones":"Evaluación automática orientativa de indicadores formales. No verifica comprensión, calidad de tesis, fuentes, plagio, autoría de IA ni asigna una nota académica. La calificación 1.0–5.0 se publica únicamente tras revisión docente."}
+
 @app.route("/entregar",methods=["GET","POST"])
 def entregar():
  if request.method=="POST":
@@ -43,8 +89,9 @@ def entregar():
   uid=uuid.uuid4().hex;code=secrets.token_urlsafe(16)
   filename=uid+"."+archivo.filename.rsplit(".",1)[-1].lower()
   archivo.save(ROOT/"uploads"/filename)
+  analisis=diagnostico_automatico(ROOT/"uploads"/filename)
   with db() as c:c.execute("INSERT INTO trabajos(id,codigo,nombre,curso,titulo,version,archivo,fecha) VALUES(?,?,?,?,?,?,?,?)",(uid,code,request.form["nombre"][:140],request.form["curso"][:80],request.form["titulo"][:180],request.form.get("version","V3"),filename,datetime.datetime.now(datetime.timezone.utc).isoformat()))
-  return view("Entrega recibida",'''<div class="box"><h1>Trabajo recibido</h1><p>Guarda tu código privado. Te permitirá consultar la evaluación una vez publicada por el docente.</p><p class="tag">{{code}}</p><a class="btn" href="{{url_for('resultado',code=code)}}">Consultar mi evaluación</a><p class="small">No compartas el código con otras personas.</p></div>''',code=code)
+  return view("Entrega recibida",'''<div class="box"><h1>Trabajo recibido: diagnóstico inmediato</h1><p>Tu documento fue recibido y analizado automáticamente. Este informe preliminar no constituye una nota definitiva.</p><p><b>Código privado:</b> <span class="tag">{{code}}</span></p>{% if analisis.error %}<p class="notice">{{analisis.error}}</p>{% else %}<div class="grid"><div class="box"><h2>{{analisis.palabras}}</h2><p>Palabras identificadas</p></div><div class="box"><h2>{{analisis.indice}}/100</h2><p>Índice orientativo de indicadores formales, no una calificación</p></div></div><h2>Observaciones inmediatas</h2>{% for titulo,detalle in analisis.observaciones %}<p><b>{{titulo}}:</b> {{detalle}}</p>{% endfor %}<p class="notice">{{analisis.limitaciones}}</p>{% endif %}<a class="btn" href="{{url_for("resultado",code=code)}}">Consultar futura nota docente</a><p class="small">No compartas tu código privado. Recuerda que la demo no garantiza conservación de archivos tras reinicios.</p></div>''',code=code,analisis=analisis)
  return view("Entregar",'''<div class="box"><h1>Entregar trabajo escrito</h1><form method="post" enctype="multipart/form-data"><label>Nombre del estudiante</label><input name="nombre" maxlength="140" required><label>Curso o grupo</label><input name="curso" maxlength="80" required><label>Título del trabajo</label><input name="titulo" maxlength="180" required><label>Rejilla de evaluación</label><select name="version"><option>V3</option><option>V2</option></select><label>Documento (PDF, Word DOCX o TXT; máximo 8 MB)</label><input type="file" name="archivo" accept=".pdf,.docx,.txt" required><p class="notice">Usa esta plataforma únicamente cuando tu institución haya autorizado el tratamiento de los datos estudiantiles. No se utiliza el archivo para determinar automáticamente si fue hecho con IA.</p>{% if demo %}<p class="notice"><b>DEMO GRATUITA:</b> la información puede perderse cuando se reinicie el servicio. No cargues nombres ni trabajos reales de estudiantes. Solo datos de ejemplo.</p><label><input style="width:auto" type="checkbox" name="ficticio" value="si" required> Confirmo que los datos y el documento son ficticios.</label>{% endif %}<button>Enviar trabajo</button></form></div>''',demo=os.getenv('DEMO_MODE','false').lower()=='true')
 @app.get("/consulta")
 def consulta():return view("Consultar",'''<div class="box"><h1>Consultar evaluación</h1><form action="/r" method="get"><label>Código privado</label><input name="code" required><button>Consultar resultado</button></form></div>''')
